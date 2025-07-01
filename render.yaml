@@ -1,5 +1,19 @@
-name: iceai-dashboard
-type: web_service
-env: python
-buildCommand: pip install -r requirements.txt
-startCommand: gunicorn main:app
+services:
+  - type: web
+    name: iceai-dashboard
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: SELLHUB_SECRET
+        sync: false
