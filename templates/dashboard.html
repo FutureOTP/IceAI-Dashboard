@@ -1,0 +1,16 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - IceAI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1>IceAI Dashboard</h1>
+    <p>Welcome, {{ session['user']['username'] }}</p>
+    <a href="/logout">Logout</a>
+  </div>
+</body>
+</html>

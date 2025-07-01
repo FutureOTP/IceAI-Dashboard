@@ -1,0 +1,23 @@
+
+body {
+  background-color: #1e1e2f;
+  color: white;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+.login-container, .dashboard-container {
+  text-align: center;
+  margin-top: 10%;
+}
+.login-button {
+  background-color: #37b4a9;
+  color: white;
+  padding: 12px 24px;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 18px;
+}
+.login-button:hover {
+  background-color: #2ea499;
+}

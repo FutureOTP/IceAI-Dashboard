@@ -8,7 +8,10 @@ CORS(app)
 
 @app.route("/")
 def index():
-    return "IceAI is running!"  # You can use render_template here later
+    if session.get("user"):
+        return redirect("/dashboard")
+    return render_template("login.html")
+
 
 # ✅ Keep this at the bottom for local dev, but it’s ignored by gunicorn
 if __name__ == "__main__":
