@@ -1,0 +1,5 @@
+name: iceai-dashboard
+type: web_service
+env: python
+buildCommand: pip install -r requirements.txt
+startCommand: gunicorn main:app
