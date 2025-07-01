@@ -495,18 +495,12 @@ def sellhub_webhook():
     
     return "OK", 200
 
-# API Routes for Settings
-@app.route('/dashboard')
-@your_decorator
-def dashboard():
-    # Add this line (example):
-    vouch_count = get_vouch_count()  # or vouch_count = 0, or however it should be calculated
+from flask_login import login_required
 
-    return render_template(
-        'dashboard.html',
-        vouches=vouch_count,
-        # other variables...
-    )
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    ...
 
 # Initialize database on startup
 init_db()
