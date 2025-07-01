@@ -496,30 +496,17 @@ def sellhub_webhook():
     return "OK", 200
 
 # API Routes for Settings
-@app.route("/api/settings/<category>", methods=["GET", "POST"])
-@require_login
-def settings_api(category):
-    conn = sqlite3.connect('iceai.db')
-    c = conn.cursor()
-    
-    if request.method == "POST":
-        data = request.json
-        for key, value in data.items():
-            c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-                     (f"{category}_{key}", json.dumps(value)))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    
-    # GET request
-    c.execute("SELECT key, value FROM settings WHERE key LIKE ?", (f"{category}_%",))
-    settings = {}
-    for row in c.fetchall():
-        key = row[0].replace(f"{category}_", "")
-        settings[key] = json.loads(row[1])
-    
-    conn.close()
-    return jsonify(settings)
+@app.route('/dashboard')
+@your_decorator
+def dashboard():
+    # Add this line (example):
+    vouch_count = get_vouch_count()  # or vouch_count = 0, or however it should be calculated
+
+    return render_template(
+        'dashboard.html',
+        vouches=vouch_count,
+        # other variables...
+    )
 
 # Initialize database on startup
 init_db()
