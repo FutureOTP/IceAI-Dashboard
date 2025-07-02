@@ -1,6 +1,7 @@
-Flask
-requests
-python-dotenv
-gunicorn
-flask-cors
-flask-login
+Flask==2.3.3
+Flask-Cors==4.0.0
+Flask-Limiter==3.5.1
+python-dotenv==1.0.1
+requests==2.31.0
+marshmallow==3.21.1
+gunicorn==21.2.0

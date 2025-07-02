@@ -1,79 +1,86 @@
-import os
 import requests
-from flask import Blueprint, redirect, request, session, url_for
+import sqlite3
+import logging
 from functools import wraps
+from flask import session, redirect, url_for, flash, request
 
-auth_blueprint = Blueprint("auth", __name__)
+from config import Config
+from database import get_db_connection
 
-# Discord OAuth2 Config
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
-DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
-DISCORD_API_BASE = "https://discord.com/api"
+logger = logging.getLogger(__name__)
 
-# Login → Discord Authorization
-@auth_blueprint.route("/login")
-def login():
-    discord_auth_url = f"{DISCORD_API_BASE}/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={DISCORD_REDIRECT_URI}&response_type=code&scope=identify"
-    return redirect(discord_auth_url)
-
-# Callback → Token Exchange → User Fetch
-@auth_blueprint.route("/callback")
-def callback():
-    code = request.args.get("code")
-    if not code:
-        return redirect("/")
-
-    data = {
-        "client_id": DISCORD_CLIENT_ID,
-        "client_secret": DISCORD_CLIENT_SECRET,
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": DISCORD_REDIRECT_URI,
-        "scope": "identify"
-    }
-
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    # Get access token
-    token_res = requests.post(f"{DISCORD_API_BASE}/oauth2/token", data=data, headers=headers)
-    if token_res.status_code != 200:
-        return "Failed to authenticate with Discord", 400
-
-    access_token = token_res.json().get("access_token")
-
-    # Get user info
-    user_res = requests.get(
-        f"{DISCORD_API_BASE}/users/@me",
-        headers={"Authorization": f"Bearer {access_token}"}
-    )
-
-    if user_res.status_code != 200:
-        return "Failed to fetch user info", 400
-
-    user = user_res.json()
-    session["user"] = {
-        "id": user["id"],
-        "username": user["username"],
-        "avatar": user["avatar"],
-        "discriminator": user["discriminator"]
-    }
-
-    return redirect(url_for("dashboard.dashboard"))
-
-# Logout → Clear session
-@auth_blueprint.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
-
-# Decorator to protect routes like /dashboard
 def require_login(f):
+    """Authentication decorator"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user" not in session:
-            return redirect(url_for("auth.login"))
+            flash("Please log in to access this page", "warning")
+            return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
+def authenticate_with_discord(code):
+    """Handle Discord OAuth2 authentication"""
+    data = {
+        "client_id": Config.DISCORD_CLIENT_ID,
+        "client_secret": Config.DISCORD_CLIENT_SECRET,
+        "grant_type": "authorization_code", 
+        "code": code,
+        "redirect_uri": Config.DISCORD_REDIRECT_URI,
+        "scope": "identify guilds"
+    }
+
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+    try:
+        # Get access token
+        token_res = requests.post(f"{Config.DISCORD_API_BASE}/oauth2/token", 
+                                data=data, headers=headers, timeout=10)
+        
+        if token_res.status_code != 200:
+            logger.error(f"Token request failed: {token_res.status_code}")
+            return None, "Failed to authenticate with Discord"
+
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        
+        if not access_token:
+            return None, "No access token received"
+
+        # Get user info
+        user_res = requests.get(
+            f"{Config.DISCORD_API_BASE}/users/@me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
+        )
+
+        if user_res.status_code != 200:
+            return None, "Failed to fetch user info"
+
+        user = user_res.json()
+        
+        if not user.get("id") or not user.get("username"):
+            return None, "Invalid user data received"
+        
+        # Store user in database
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("INSERT OR REPLACE INTO users (id, username, avatar, discriminator) VALUES (?, ?, ?, ?)",
+                      (user["id"], user["username"], user.get("avatar"), user.get("discriminator", "0000")))
+            conn.commit()
+        except sqlite3.Error as e:
+            logger.error(f"Database error storing user: {e}")
+            return None, "Database error during registration"
+        finally:
+            if conn:
+                conn.close()
+        
+        return user, None
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error during authentication: {e}")
+        return None, "Network error during authentication"
+    except Exception as e:
+        logger.error(f"Unexpected error during authentication: {e}")
+        return None, "An error occurred during authentication"
